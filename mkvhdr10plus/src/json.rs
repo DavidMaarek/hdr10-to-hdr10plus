@@ -125,8 +125,11 @@ pub fn build(
         .iter()
         .zip(labels.iter())
         .map(|(m, label)| {
-            let distribution_values =
-                m.distribution.iter().map(|&v| clamp_value(v)).collect::<Vec<_>>();
+            let distribution_values = m
+                .distribution
+                .iter()
+                .map(|&v| clamp_value(v))
+                .collect::<Vec<_>>();
             SceneInfo {
                 bezier_curve_data: BezierCurveData {
                     anchors: IDENTITY_ANCHORS.to_vec(),
@@ -201,7 +204,9 @@ mod tests {
         assert_eq!(s.number_of_windows, 1);
         assert_eq!(s.targeted_system_display_maximum_luminance, 1000);
         assert_eq!(
-            s.luminance_parameters.luminance_distributions.distribution_index,
+            s.luminance_parameters
+                .luminance_distributions
+                .distribution_index,
             vec![1, 5, 10, 25, 50, 75, 90, 95, 99]
         );
         assert_eq!(s.bezier_curve_data.anchors, IDENTITY_ANCHORS.to_vec());

@@ -126,14 +126,7 @@ fn sample10(plane: &[u8], off: usize) -> u16 {
 /// coordinates `(x, y)`. Approximate center siting: chroma grid is mapped via
 /// `cx = x / 2`, `cy = y / 2`. Returns the 10-bit code as `f64`.
 #[inline]
-fn chroma_bilinear(
-    plane: &[u8],
-    stride: usize,
-    cw: usize,
-    ch: usize,
-    x: usize,
-    y: usize,
-) -> f64 {
+fn chroma_bilinear(plane: &[u8], stride: usize, cw: usize, ch: usize, x: usize, y: usize) -> f64 {
     let fx = x as f64 * 0.5;
     let fy = y as f64 * 0.5;
     let x0 = fx.floor() as usize;
@@ -309,7 +302,11 @@ mod tests {
     fn pq_eotf_100_nits_code() {
         // The ST 2084 PQ code for 100 nits is ~0.508; round-trip should hold.
         let l = pq_eotf(0.5081);
-        assert!((l * 10000.0 - 100.0).abs() < 2.0, "got {} nits", l * 10000.0);
+        assert!(
+            (l * 10000.0 - 100.0).abs() < 2.0,
+            "got {} nits",
+            l * 10000.0
+        );
     }
 
     #[test]

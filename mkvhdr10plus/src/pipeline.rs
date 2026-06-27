@@ -48,10 +48,12 @@ pub fn run(cli: &Cli) -> Result<()> {
     let parent = input.parent().unwrap_or_else(|| Path::new("."));
 
     if cli.json_only {
-        let json_path = cli
-            .json_out
-            .clone()
-            .unwrap_or_else(|| parent.join(format!("{stem}.hdr10plus.json")).to_string_lossy().into_owned());
+        let json_path = cli.json_out.clone().unwrap_or_else(|| {
+            parent
+                .join(format!("{stem}.hdr10plus.json"))
+                .to_string_lossy()
+                .into_owned()
+        });
         fs::write(&json_path, &json_text)
             .with_context(|| format!("failed to write {json_path}"))?;
         println!("{} {}", "Wrote metadata JSON:".green(), json_path);
@@ -59,10 +61,12 @@ pub fn run(cli: &Cli) -> Result<()> {
     }
 
     // End-to-end path: work inside a temp dir next to the output.
-    let output_path = cli
-        .output
-        .clone()
-        .unwrap_or_else(|| parent.join(format!("{stem}.HDR10plus.mkv")).to_string_lossy().into_owned());
+    let output_path = cli.output.clone().unwrap_or_else(|| {
+        parent
+            .join(format!("{stem}.HDR10plus.mkv"))
+            .to_string_lossy()
+            .into_owned()
+    });
 
     if Path::new(&output_path).exists() {
         bail!("output already exists: {output_path}");
@@ -198,7 +202,15 @@ fn remux(
                 .arg("-i")
                 .arg(input)
                 .args([
-                    "-map", "0:v:0", "-map", "1:a?", "-map", "1:s?", "-map_chapters", "1", "-c",
+                    "-map",
+                    "0:v:0",
+                    "-map",
+                    "1:a?",
+                    "-map",
+                    "1:s?",
+                    "-map_chapters",
+                    "1",
+                    "-c",
                     "copy",
                 ])
                 .arg(output_path),
@@ -373,46 +385,46 @@ fn analyze(cli: &Cli) -> Result<(Vec<FrameMeasurement>, Vec<u32>, (u32, u32))> {
     let mut decoded = frame::Video::empty();
     let mut scaled = frame::Video::empty();
 
-    let mut process =
-        |decoded: &frame::Video,
-         measurements: &mut Vec<FrameMeasurement>,
-         frame_count: &mut u32,
-         prev_hist: &mut Option<Vec<f64>>,
-         last_cut: &mut Option<u32>,
-         last_measurement: &mut Option<FrameMeasurement>,
-         cuts: &mut Vec<u32>|
-         -> Result<()> {
-            let should_analyze = *frame_count % sample_rate == 0 || last_measurement.is_none();
-            let m = if should_analyze {
-                let analysis_frame = if let Some(sc) = scaler.as_mut() {
-                    sc.run(decoded, &mut scaled).context("failed to scale frame")?;
-                    &scaled
-                } else {
-                    decoded
-                };
-                let m = measure_frame(analysis_frame);
-
-                if let Some(prev) = prev_hist.as_ref() {
-                    let diff = histogram_difference(&m.coarse_histogram, prev);
-                    if diff > cli.scene_threshold
-                        && cut_allowed(*last_cut, *frame_count, cli.min_scene_length)
-                    {
-                        cuts.push(*frame_count);
-                        *last_cut = Some(*frame_count);
-                    }
-                }
-                *prev_hist = Some(m.coarse_histogram.clone());
-                *last_measurement = Some(m.clone());
-                m
+    let mut process = |decoded: &frame::Video,
+                       measurements: &mut Vec<FrameMeasurement>,
+                       frame_count: &mut u32,
+                       prev_hist: &mut Option<Vec<f64>>,
+                       last_cut: &mut Option<u32>,
+                       last_measurement: &mut Option<FrameMeasurement>,
+                       cuts: &mut Vec<u32>|
+     -> Result<()> {
+        let should_analyze = *frame_count % sample_rate == 0 || last_measurement.is_none();
+        let m = if should_analyze {
+            let analysis_frame = if let Some(sc) = scaler.as_mut() {
+                sc.run(decoded, &mut scaled)
+                    .context("failed to scale frame")?;
+                &scaled
             } else {
-                last_measurement.as_ref().unwrap().clone()
+                decoded
             };
+            let m = measure_frame(analysis_frame);
 
-            measurements.push(m);
-            *frame_count += 1;
-            pb.set_position(*frame_count as u64);
-            Ok(())
+            if let Some(prev) = prev_hist.as_ref() {
+                let diff = histogram_difference(&m.coarse_histogram, prev);
+                if diff > cli.scene_threshold
+                    && cut_allowed(*last_cut, *frame_count, cli.min_scene_length)
+                {
+                    cuts.push(*frame_count);
+                    *last_cut = Some(*frame_count);
+                }
+            }
+            *prev_hist = Some(m.coarse_histogram.clone());
+            *last_measurement = Some(m.clone());
+            m
+        } else {
+            last_measurement.as_ref().unwrap().clone()
         };
+
+        measurements.push(m);
+        *frame_count += 1;
+        pb.set_position(*frame_count as u64);
+        Ok(())
+    };
 
     for (stream, packet) in ictx.packets() {
         if stream.index() != stream_index {
