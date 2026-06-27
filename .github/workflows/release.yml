@@ -27,7 +27,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: HDR-Analyze Suite ${{ github.ref_name }}
           draft: false
-          prerelease: false
+          # Tags with a pre-release suffix (e.g. v1.0.0-alpha.1) are flagged as
+          # pre-releases on GitHub; plain tags (v1.0.0) are normal releases.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: false
           body: |
             ## HDR-Analyze Suite ${{ github.ref_name }}
