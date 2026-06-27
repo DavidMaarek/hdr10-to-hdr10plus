@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "hdr_analyzer_mvp",
     "mkvdolby",
+    "mkvhdr10plus",
     "verifier",
 ]
 exclude = ["tools/compare_baseline"]
