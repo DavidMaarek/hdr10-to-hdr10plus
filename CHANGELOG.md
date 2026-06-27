@@ -4,6 +4,22 @@ This document provides a historical record of completed milestones, feature impl
 
 ---
 
+## [Unreleased]
+
+### Added
+- New workspace binary `mkvhdr10plus`: generates HDR10+ dynamic metadata
+  (Profile B) from an HDR10 source and injects it into the original HEVC stream
+  without re-encoding. Pipeline: decode + per-frame RGB-linear measurement →
+  `metadata.json` → `ffmpeg` HEVC extract → `hdr10plus_tool inject` →
+  `mkvmerge` remux → optional `--verify`.
+- Per-frame measurement implements `docs/HDR10plus_writer_spec.md` §2: bilinear
+  chroma upsampling, BT.2020 NCL YCbCr→R'G'B', ST 2084 PQ EOTF to linear light,
+  per-channel `MaxScl`, `AverageRGB` of `maxRGB`, and the 9-slot `maxRGB`
+  percentile distribution (reserved "5" slot = 99.98th percentile). All values
+  scaled ×100000 and clamped to `[0, 100000]`.
+- `mkvhdr10plus --json-only` to emit the metadata JSON without the inject/mux
+  chain (no external tools required).
+
 ## [0.2.0] - 2026-05-31
 
 Quality and observability release for native HDR10, HDR10+, and HLG to Dolby

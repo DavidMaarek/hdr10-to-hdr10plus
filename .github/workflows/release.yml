@@ -40,6 +40,7 @@ jobs:
             |------|-------------|
             | `hdr_analyzer_mvp` | HDR10/HLG frame analyzer and measurement generator |
             | `mkvdolby` | HDR10/HDR10+/HLG to Dolby Vision Profile 8.1 converter |
+            | `mkvhdr10plus` | HDR10 to HDR10+ (Profile B) dynamic-metadata writer |
             | `verifier` | madVR measurement file verification utility |
             
             ### 📦 Download
@@ -70,6 +71,9 @@ jobs:
             - **FFmpeg** must be installed and available in your system PATH
             - **mkvdolby** also requires `mkvmerge`, `dovi_tool` 2.3.2 or newer,
               and `hdr10plus_tool` when converting HDR10+ sources
+            - **mkvhdr10plus** requires `ffmpeg`, `hdr10plus_tool` and `mkvmerge`
+              in PATH for the full inject/mux chain (`--json-only` needs none).
+              On Windows, the FFmpeg runtime DLLs are bundled in the archive.
             
             ### 🚀 Quick Start
             
@@ -205,6 +209,7 @@ jobs:
           # Copy all binaries
           cp "target/${{ matrix.target }}/release/hdr_analyzer_mvp" "$staging/bin/"
           cp "target/${{ matrix.target }}/release/mkvdolby" "$staging/bin/"
+          cp "target/${{ matrix.target }}/release/mkvhdr10plus" "$staging/bin/"
           cp "target/${{ matrix.target }}/release/verifier" "$staging/bin/"
           cp scripts/mkvdolby_hifi_workflow.sh "$staging/bin/"
           
@@ -229,13 +234,23 @@ jobs:
           # Copy all binaries
           cp "target/${{ matrix.target }}/release/hdr_analyzer_mvp.exe" "$staging/bin/"
           cp "target/${{ matrix.target }}/release/mkvdolby.exe" "$staging/bin/"
+          cp "target/${{ matrix.target }}/release/mkvhdr10plus.exe" "$staging/bin/"
           cp "target/${{ matrix.target }}/release/verifier.exe" "$staging/bin/"
-          
+
+          # Bundle the FFmpeg runtime DLLs that the executables link against
+          # (vcpkg x64-windows). Without these the .exe files will not start on
+          # a machine that has no FFmpeg installed.
+          if cp /c/vcpkg/installed/x64-windows/bin/*.dll "$staging/bin/" 2>/dev/null; then
+            echo "Bundled FFmpeg runtime DLLs from vcpkg."
+          else
+            echo "::warning::No vcpkg FFmpeg DLLs found to bundle; the Windows binaries may require a separate FFmpeg install."
+          fi
+
           # Copy documentation
           cp README.md "$staging/" 2>/dev/null || echo "README not found"
           cp CHANGELOG.md "$staging/" 2>/dev/null || echo "CHANGELOG not found"
           cp LICENSE "$staging/" 2>/dev/null || echo "LICENSE not found"
-          
+
           # Create archive
           asset="hdr-analyze-${{ github.ref_name }}-${{ matrix.target }}.zip"
           7z a "$asset" "$staging"
@@ -324,7 +339,7 @@ jobs:
 
             All builds completed successfully:
             - ✅ Cross-platform builds (Windows, macOS Intel, macOS ARM, Linux)
-            - ✅ All three tools built: \`hdr_analyzer_mvp\`, \`mkvdolby\`, \`verifier\`
+            - ✅ All four tools built: \`hdr_analyzer_mvp\`, \`mkvdolby\`, \`mkvhdr10plus\`, \`verifier\`
             - ✅ Test suite passed
             - ✅ Code quality checks (clippy, formatting)
             - ✅ Security audit passed
@@ -337,7 +352,9 @@ jobs:
             ├── bin/
             │   ├── hdr_analyzer_mvp
             │   ├── mkvdolby
+            │   ├── mkvhdr10plus
             │   ├── verifier
+            │   ├── *.dll (FFmpeg runtime, Windows only)
             │   └── mkvdolby_hifi_workflow.sh (Linux/macOS)
             ├── README.md
             ├── CHANGELOG.md
@@ -381,6 +398,7 @@ jobs:
           echo "### 📦 Included Tools" >> $GITHUB_STEP_SUMMARY
           echo "- \`hdr_analyzer_mvp\` - HDR10+ analyzer" >> $GITHUB_STEP_SUMMARY
           echo "- \`mkvdolby\` - Dolby Vision processor" >> $GITHUB_STEP_SUMMARY
+          echo "- \`mkvhdr10plus\` - HDR10 to HDR10+ writer" >> $GITHUB_STEP_SUMMARY
           echo "- \`verifier\` - Binary verifier" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📥 **Download**: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
